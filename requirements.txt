@@ -8,6 +8,7 @@ discord==1.7.3
 discord.py==1.7.3
 et-xmlfile==1.1.0
 idna==3.3
+markovify==0.9.4
 multidict==6.0.2
 numpy==1.22.3
 openai==0.16.0
@@ -20,5 +21,6 @@ requests==2.27.1
 six==1.16.0
 tqdm==4.63.0
 typing-extensions==4.1.1
+Unidecode==1.3.4
 urllib3==1.26.9
 yarl==1.7.2

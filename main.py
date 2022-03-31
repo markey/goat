@@ -2,6 +2,7 @@ from collections import defaultdict, deque, namedtuple
 import collections
 import discord
 from discord.ext import commands
+import markovify
 import openai
 import os
 import random
@@ -17,7 +18,7 @@ class MessageHistory:
         def get_deq():
             return deque(list(), history_length)
         self.history = defaultdict(get_deq)
-    
+
     def add(self, channel, author, text):
         m = Message(channel, author, text)
         self.history[channel].append(m)
@@ -52,6 +53,7 @@ What follows is one of goats chats.  He joins a conversation already in progress
 {}
 {}:""".format(BOT_NAME, log_message, BOT_NAME)
 
+
 def get_response(channel, author, text):
     # don't respond to my own message events
     if author == BOT_NAME:
@@ -82,6 +84,38 @@ def get_response(channel, author, text):
     history.add(channel, BOT_NAME, response)
     return response
 
+###
+### Markov testing module
+###
+
+# global state yolo
+markov_models = dict()
+
+# like markov, for goat.
+def goatov(guild):
+    try:
+        model = markov_models[guild]
+    except KeyError:
+        return None
+    # TODO: this can fail sometimes
+    return model.make_short_sentence(280)
+
+
+def maintain_model(guild, text):
+    new_model = markovify.Text(text)
+
+    try:
+        model = markov_models[guild]
+    except KeyError:
+        markov_models[guild] = new_model
+    else:
+        combined_model = markovify.combine([model, new_model])
+        markov_models[guild] = combined_model
+
+###
+### Main bot code
+###
+
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -92,12 +126,20 @@ class Chat(commands.Cog):
             message.channel.name,
             message.author.name,
             message.content))
-        response = get_response(
-            message.channel.name,
-            message.author.name,
-            message.content)
+
+        response = None
+        if message.content.startswith("goatov"):
+            # TODO: isolate server data
+            response = goatov(message.guild)
+        else:
+            response = get_response(
+                message.channel.name,
+                message.author.name,
+                message.content)
         if response:
             await message.channel.send(response)
+
+        maintain_model(message.guild, message.content)
 
  
 bot = commands.Bot(command_prefix="!")
