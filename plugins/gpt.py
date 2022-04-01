@@ -1,16 +1,14 @@
 from collections import defaultdict, deque, namedtuple
 import collections
-import discord
 from discord.ext import commands
-import markovify
 import openai
-import os
 import random
 import re
 
 BOT_NAME = "goat"
 
 # TODO add server to message history for multi server support.
+# TODO convert these things to real identifiers
 Message = namedtuple("Message", ["channel", "author", "text"])
 
 class MessageHistory:
@@ -26,8 +24,6 @@ class MessageHistory:
     def get(self, channel):
         return list(self.history[channel])
 
-# global state yolo
-history = MessageHistory(20)
 
 def get_prompt(messages):
     log = []
@@ -54,101 +50,61 @@ What follows is one of goats chats.  He joins a conversation already in progress
 {}:""".format(BOT_NAME, log_message, BOT_NAME)
 
 
-def get_response(channel, author, text):
-    # don't respond to my own message events
-    if author == BOT_NAME:
-        return None
-
-    # update history with current discussion.
-    history.add(channel, author, text)
-
-    # respaond 5% of the time, or when addressed.
-    if not re.search("goat", text, re.I) and not random.random() < 0.00:
-        return None
-
-    # TODO: verify prompt length is limited to the correct number of tokens.
-    prompt = get_prompt(history.get(channel))
-
-    r = openai.Completion.create(
-        #engine="text-davinci-002",  $0.06/1000 tokens, 4096 toksns/req
-        engine="text-curie-001",     # 0.006/1000, 2048 tokens/req
-        prompt=prompt,
-        temperature=0.9,
-	max_tokens=150,
-	top_p=1,
-	frequency_penalty=0.0,
-	presence_penalty=0.6,
-	#stop=[" Human:", " AI:"]
-    )
-    response = r.choices[0].text
-    history.add(channel, BOT_NAME, response)
-    return response
-
-###
-### Markov testing module
-###
-
-# global state yolo
-markov_models = dict()
-
-# like markov, for goat.
-def goatov(guild):
-    try:
-        model = markov_models[guild]
-    except KeyError:
-        return None
-    # TODO: this can fail sometimes
-    return model.make_short_sentence(280)
-
-
-def maintain_model(guild, text):
-    new_model = markovify.Text(text)
-
-    try:
-        model = markov_models[guild]
-    except KeyError:
-        markov_models[guild] = new_model
-    else:
-        combined_model = markovify.combine([model, new_model])
-        markov_models[guild] = combined_model
-
-###
-### Main bot code
-###
-
-class Chat(commands.Cog):
+class Bot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # TODO pull name from bot
+        self.name = BOT_NAME
+        self.history = MessageHistory(20)
+        # TODO pass in more config like prompt generator, etc.
+
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        print("{} {}: {}".format(
-            message.channel.name,
-            message.author.name,
-            message.content))
+        channel = message.channel.name
+        author = message.author.name
+        content = message.content
 
-        response = None
-        if message.content.startswith("goatov"):
-            # TODO: isolate server data
-            response = goatov(message.guild)
-        else:
-            response = get_response(
-                message.channel.name,
-                message.author.name,
-                message.content)
+        # TODO: move debug messages to message history.
+        print("{} {}: {}".format(channel, author, content))
+
+        # don't respond to my own message events
+        # TODO: update to unique IDs
+        if author == self.name:
+            return None
+
+        # update history with current discussion.
+        self.history.add(channel, author, content)
+
+        # respond when mentioned
+        if not re.search("goat", content, re.I):
+            return None
+
+        response = await self.get_response(channel, author, content)
         if response:
             await message.channel.send(response)
+            # record the bots outgoing response in history.
+            self.history.add(channel, self.name, response)
 
-        maintain_model(message.guild, message.content)
 
- 
-bot = commands.Bot(command_prefix="!")
- 
-@bot.event
-async def on_ready():
-    print("Ready!")
+    async def get_response(self, channel, author, text):
+        # TODO: verify prompt length is limited to the correct
+        # number of tokens.
+        prompt = get_prompt(self.history.get(channel))
 
-bot.add_cog(Chat(bot))
- 
-bot.run(os.environ["DISCORD_TOKEN"])
+        r = openai.Completion.create(
+            # $0.06/1000 tokens, max 4096 tokens/req
+            #engine="text-davinci-002",
+
+            # 0.006/1000, max 2048 tokens/req
+            engine="text-curie-001",
+            prompt=prompt,
+            temperature=0.9,
+            max_tokens=150,
+            top_p=1,
+            frequency_penalty=0.0,
+            presence_penalty=0.6,
+        )
+        return r.choices[0].text
+
 
