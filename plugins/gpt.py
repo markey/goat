@@ -59,6 +59,7 @@ class Bot(commands.Cog):
         # TODO pull name from bot
         self.name = BOT_NAME
         self.history = MessageHistory(20)
+        self.last_response = None
         # TODO pass in more config like prompt generator, etc.
 
 
@@ -84,6 +85,11 @@ class Bot(commands.Cog):
             return None
 
         response = await self.get_response(channel, author, content)
+        if response == self.last_response:
+            # if goat is repeating, then turn up the temperature to try to
+            # break the cycle
+            response = await self.get_response(channel, author, content,
+                                               temp=0.99)
         if response:
             # clean response if goat tries to hallucinate a whole conversation.
             match = re.search(r"<[^>]+>:", response)
@@ -92,6 +98,7 @@ class Bot(commands.Cog):
                 response = response[:match.start()]
             await message.channel.send(response)
             # record the bots outgoing response in history.
+            self.last_response = response
             self.history.add(channel, self.name, response)
 
 
@@ -109,6 +116,7 @@ class Bot(commands.Cog):
             # 0.006/1000, max 2048 tokens/req
             engine="text-curie-001",
             prompt=prompt,
+            #temperature=0.9,
             temperature=0.9,
             max_tokens=150,
             top_p=1,
