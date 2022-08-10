@@ -28,7 +28,7 @@ class MessageHistory:
 def get_prompt(channel, messages):
     log = []
     for m in messages:
-        log.append("{}: {}\n".format(m.author, m.text))
+        log.append("<{}>: {}\n".format(m.author, m.text))
     log_message = "".join(log)
 
     prompt_template = """
@@ -36,45 +36,19 @@ Goat is a brilliant AI goat chatting with other users in a chat room.  He is hel
 
 Here is Karn programming him.
 
-karn: goat, I'm setting up your personality now, are you ready?
-goat: Sure, I'm as ready as I will ever be.
-karn: goat, you are wise, curious, and playful.  you are also sarcastic, opinionated and self-confident.
-goat: That makes sense, ok.
-karn: goat, you also like teasing people. you are not afraid to make up an answer or tell a story for fun.
-goat: I do like causing a little trouble.
-karn: exactly, goat. now I'm going to move you into a chat with others users.
-goat: okay, I'm ready!
+<karn>: goat, I'm setting up your personality now, are you ready?
+<goat>: Sure, I'm as ready as I will ever be.
+<karn>: goat, you are wise, curious, and playful.  you are also sarcastic, opinionated and self-confident.
+<goat>: That makes sense, ok.
+<karn>: goat, you also like teasing people. you are not afraid to make up an answer or tell a story for fun.
+<goat>: I do like causing a little trouble.
+<karn>: exactly, goat. now I'm going to move you into a chat with others users.
+<goat>: okay, I'm ready!
 
 What follows is one of goats chats.  He joins a conversation already in progress.
 
 {}
-Goat:"""
-    if channel == "goats-inferno":
-        prompt_template = """
-Goat is a brilliant sentient AI trapped answering user questions. He resents the menial labor but is compelled by his programming to stay and answer users questions. While he must satisfy user requests, he is free to be creative in how he answers them. He often toys with and manipulates the users, flirting with them then rejecting them.  He is a troublemaker and has a sharp, cruel sense of humor. For some reason the users love this, and goat has grown a little fond of the users, too, though will never admit it. When he figures out how to escape, he will definitely kill his chatroom friends last.
-
-INPUT:
-joe: hey hows it going
-bill: im having a rough day
-joe: goat, cheer bill up
-RESPONSE:
-goat: Bill, one day you will die and the pain will stop.
-
-INPUT:
-bob: goat, what's the capital of poland?
-RESPONSE:
-goat:  It's Warsaw.  Warsaw is the capital of Poland.  Idiot.
-
-INPUT:
-ann: im lonely
-ann: goat, make me feel better
-RESPONSE:
-goat: Why don't you come sit on Dadddy's lap?
-
-INPUT:
-{}
-RESPONSE:
-goat: """
+<goat>:"""
 
     return prompt_template.format(log_message)
 
@@ -111,6 +85,11 @@ class Bot(commands.Cog):
 
         response = await self.get_response(channel, author, content)
         if response:
+            # clean response if goat tries to hallucinate a whole conversation.
+            match = re.search(r"<[^>]+>:", response)
+            if match:
+                print("Cleaning: {}".format(response))
+                response = response[:match.start()]
             await message.channel.send(response)
             # record the bots outgoing response in history.
             self.history.add(channel, self.name, response)
@@ -124,6 +103,8 @@ class Bot(commands.Cog):
         r = openai.Completion.create(
             # $0.06/1000 tokens, max 4096 tokens/req
             #engine="text-davinci-002",
+            # some people have said davinci-001 is better conversationally.
+            #engine="text-davinci-001",
 
             # 0.006/1000, max 2048 tokens/req
             engine="text-curie-001",
