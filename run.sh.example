@@ -1,3 +1,4 @@
-DISCORD_TOKEN=token \ 
-  OPENAI_API_KEY=key \
-  python3 main.py
+export DISCORD_TOKEN=token
+export REPLICATE_API_TOKEN=token for stable diffusion
+export OPENAI_API_KEY=openai api key
+python3 main.py

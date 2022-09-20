@@ -80,6 +80,10 @@ class Bot(commands.Cog):
         # update history with current discussion.
         self.history.add(channel, author, content)
 
+        # filter out other commands -- TODO: fix this.
+        if re.search("^goat draw ", content, re.I):
+            return None
+
         # respond when mentioned
         if not re.search("goat", content, re.I):
             return None
@@ -89,7 +93,7 @@ class Bot(commands.Cog):
             # if goat is repeating, then turn up the temperature to try to
             # break the cycle
             response = await self.get_response(channel, author, content,
-                                               temp=0.99)
+                                               temperature=0.99)
         if response:
             # clean response if goat tries to hallucinate a whole conversation.
             match = re.search(r"<[^>]+>:", response)
