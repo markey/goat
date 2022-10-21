@@ -41,7 +41,7 @@ class Bot(commands.Cog):
             await asyncio.sleep(0.5)
 
         if prediction.status == "succeeded":
-            await message.channel.send("{}\n{}".format(prompt, prediction.output[0]))
+            await message.reply("{}\n{}".format(prompt, prediction.output[0]))
         else:
             print("Got status {} for {}".format(prediction.status, prompt))
-            await message.channel.send("I failed to draw {}".format(prompt))
+            await message.reply("I couldn't draw that.")
