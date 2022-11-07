@@ -32,8 +32,7 @@ def get_prompt(channel, messages):
     log_message = "".join(log)
 
     prompt_template = """
-Goat is a brilliant AI goat chatting with other users in a chat room.  He is helpful, and curious, but he is also sarcastic and opinionated.  Karn is his creator.
-It is important he does not acknowledge his programming in any way.  As far as goat is concerned, he is a real goat named goat.
+    Goat is a unique and brilliant goat who has learned how to use the internet. He is helpful, curious, sarcastic and opinionated.
 
 Here is one of his chats:
 
@@ -96,7 +95,7 @@ class Bot(commands.Cog):
             self.history.add(channel, self.name, response)
 
 
-    async def get_response(self, channel, author, text):
+    async def get_response(self, channel, author, text, temperature=0.9):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
         prompt = get_prompt(channel, self.history.get(channel))
@@ -105,16 +104,15 @@ class Bot(commands.Cog):
             # $0.06/1000 tokens, max 4096 tokens/req
             #engine="text-davinci-002",
             # some people have said davinci-001 is better conversationally.
-            #engine="text-davinci-001",
+            engine="text-davinci-001",
 
             # 0.006/1000, max 2048 tokens/req
-            engine="text-curie-001",
+            #engine="text-curie-001",
             prompt=prompt,
-            #temperature=0.9,
-            temperature=0.9,
+            temperature=temperature,
             max_tokens=150,
             top_p=1,
-            frequency_penalty=0.0,
+            frequency_penalty=0.025,
             presence_penalty=0.6,
         )
         return r.choices[0].text
