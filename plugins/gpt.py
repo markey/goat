@@ -5,8 +5,6 @@ import openai
 import random
 import re
 
-BOT_NAME = "goat"
-
 # TODO add server to message history for multi server support.
 # TODO convert these things to real identifiers
 Message = namedtuple("Message", ["channel", "author", "text"])
@@ -24,33 +22,25 @@ class MessageHistory:
     def get(self, channel):
         return list(self.history[channel])
 
+class Bot(commands.Cog):
+    def __init__(self, bot, config):
+        self.bot = bot
+        self.config = config
+        self.history = MessageHistory(self.config.history_length)
+        self.last_response = None
 
-def get_prompt(channel, messages):
-    log = []
-    for m in messages:
-        log.append("<{}>: {}\n".format(m.author, m.text))
-    log_message = "".join(log)
+    def get_prompt(self, messages):
+        log = []
+        for m in messages:
+            log.append("### <{}>: {}\n".format(m.author, m.text))
+        log_message = "".join(log)
 
-    prompt_template = """
-    Goat is a unique and brilliant goat who has learned how to use the internet. He is helpful, curious, sarcastic and opinionated.
-
-Here is one of his chats:
+        prompt = """{}
 
 {}
-<goat>:"""
+### <{}>:"""
 
-    return prompt_template.format(log_message)
-
-
-class Bot(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        # TODO pull name from bot
-        self.name = BOT_NAME
-        self.history = MessageHistory(20)
-        self.last_response = None
-        # TODO pass in more config like prompt generator, etc.
-
+        return prompt.format(self.config.prompt, log_message, self.config.bot_name)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -63,7 +53,8 @@ class Bot(commands.Cog):
 
         # don't respond to my own message events
         # TODO: update to unique IDs
-        if author == self.name:
+
+        if author == self.config.bot_name:
             return None
 
         # update history with current discussion.
@@ -77,43 +68,36 @@ class Bot(commands.Cog):
         if not re.search("goat", content, re.I):
             return None
 
-        response = await self.get_response(channel, author, content)
+        response = await self.get_response(channel)
         if response == self.last_response:
             # if goat is repeating, then turn up the temperature to try to
             # break the cycle
-            response = await self.get_response(channel, author, content,
-                                               temperature=0.99)
+            # TODO: this should be server and channel specific.
+            response = await self.get_response(channel, temperature=self.config.high_temperature)
         if response:
-            # clean response if goat tries to hallucinate a whole conversation.
-            match = re.search(r"<[^>]+>:", response)
-            if match:
-                print("Cleaning: {}".format(response))
-                response = response[:match.start()]
             await message.channel.send(response)
             # record the bots outgoing response in history.
             self.last_response = response
-            self.history.add(channel, self.name, response)
+            self.history.add(channel, self.config.bot_name, response)
 
 
-    async def get_response(self, channel, author, text, temperature=0.9):
+    async def get_response(self, channel, temperature=None):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
-        prompt = get_prompt(channel, self.history.get(channel))
+        prompt = self.get_prompt(self.history.get(channel))
+
+        if temperature is None:
+            temperature = self.config.temperature
 
         r = openai.Completion.create(
-            # $0.06/1000 tokens, max 4096 tokens/req
-            #engine="text-davinci-002",
-            # some people have said davinci-001 is better conversationally.
-            engine="text-davinci-001",
-
-            # 0.006/1000, max 2048 tokens/req
-            #engine="text-curie-001",
+            engine=self.config.engine,
             prompt=prompt,
             temperature=temperature,
-            max_tokens=150,
-            top_p=1,
-            frequency_penalty=0.025,
-            presence_penalty=0.6,
+            max_tokens=self.config.max_tokens,
+            top_p=self.config.top_p,
+            frequency_penalty=self.config.frequency_penalty,
+            presence_penalty=self.config.presence_penalty,
+            stop="###",
         )
         return r.choices[0].text
 

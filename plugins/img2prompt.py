@@ -4,13 +4,11 @@ import asyncio
 import replicate
 import re
 
-BOT_NAME = "goat"
-
 class Bot(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, config):
         self.bot = bot
+        self.config = config
         # TODO pull name from bot
-        self.name = BOT_NAME
         self.model = replicate.models.get("methexis-inc/img2prompt")
 
 
@@ -22,7 +20,7 @@ class Bot(commands.Cog):
 
         # don't respond to my own message events
         # TODO: update to unique IDs
-        if author == self.name:
+        if author == self.config.bot_name:
             return None
 
         # respond when triggered
