@@ -1,5 +1,5 @@
 from discord.ext import commands
-from plugins import gpt, sd, img2prompt
+from plugins import gpt, sd, img2prompt, openjourney
 import json
 import os
 
@@ -23,7 +23,7 @@ bot = commands.Bot(command_prefix="!")
 async def on_ready():
     print("Ready!")
 
-for cog in [gpt, sd, img2prompt]:
+for cog in [gpt, sd, img2prompt, openjourney]:
     bot.add_cog(cog.Bot(bot, config))
 
 bot.run(os.environ["DISCORD_TOKEN"])
