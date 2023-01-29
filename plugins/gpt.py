@@ -4,23 +4,35 @@ from discord.ext import commands
 import openai
 import random
 import re
+import glog as log
+
+from .lib import embeddings
+
 
 # TODO add server to message history for multi server support.
 # TODO convert these things to real identifiers
 Message = namedtuple("Message", ["channel", "author", "text"])
 
+
+def format_message(m):
+    return f"<{m.author}>: {m.text}"
+
+
 class MessageHistory:
     def __init__(self, history_length):
         def get_deq():
             return deque(list(), history_length)
+
         self.history = defaultdict(get_deq)
 
     def add(self, channel, author, text):
         m = Message(channel, author, text)
         self.history[channel].append(m)
+        return m
 
     def get(self, channel):
         return list(self.history[channel])
+
 
 class Bot(commands.Cog):
     def __init__(self, bot, config):
@@ -30,19 +42,43 @@ class Bot(commands.Cog):
         self.last_response = None
         # autocrat: added this for for non-response messages
         self.last_idk = None
+        self.edbs = {}
 
-    def get_prompt(self, messages):
-        log = []
-        for m in messages:
-            log.append("### <{}>: {}\n".format(m.author, m.text))
-        log_message = "".join(log)
+    def get_selections_prompt(self, selections):
+        return "As a reminder, here are some selections from previous conversations.\n\n{}\n\n".format(
+            "".join([f"{i}: {s}\n" for i, s in enumerate(selections)])
+        )
 
-        prompt = """{}
+    def get_history_prompt(self, messages):
+        return "".join([f"<{m.author}>: {m.text}\n" for m in messages])
 
-{}
-### <{}>:"""
+    def get_prompt(self, channel, selections):
+        messages = self.history.get(channel)
+        # TODO incorporate channel here
+        history_prompt = self.get_history_prompt(messages)
+        selections_prompt = self.get_selections_prompt(selections)
+        return "{}\n\nHere are some relevent bits of conversation.\n\n{}\nHere is a chat log.\n{}<{}>:".format(
+            self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
+        )
 
-        return prompt.format(self.config.prompt, log_message, self.config.bot_name)
+    def get_edb(self, guild_id):
+        if guild_id not in self.edbs:
+            self.edbs[guild_id] = embeddings.EmbeddingDB(f"goat_history_{guild_id}")
+        return self.edbs[guild_id]
+
+    async def get_selections(self, msg, guild_id):
+        """Get a list of selections from the history to use as a prompt for the current message."""
+        # get recent messages from history and pair them with the current message.
+
+        messages = self.history.get(msg.channel)[-3:]
+        history = "".join([f"<{m.author}>: {m.text}\n" for m in messages])
+        full_text = f"{history}\n"
+
+        edb = self.get_edb(guild_id)
+        embedding = await embeddings.get_embedding(full_text)
+        nearest = edb.get_nearest(embedding, limit=10)
+        edb.add(full_text, embedding)
+        return nearest
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -51,19 +87,31 @@ class Bot(commands.Cog):
         author = message.author.name
         content = message.content
 
-        # TODO: move debug messages to message history.
-        print("{} {}: {}".format(channel, author, content))
-
         # don't respond to my own message events
         # TODO: update to unique IDs
-
         if author == self.config.bot_name:
             return None
 
-        # update history with current discussion.
-        self.history.add(channel, author, content)
+        # filter out messages from other bots
+        if message.author.bot:
+            return None
 
-        # filter out other commands -- TODO: fix this.
+        if content == "":
+            return None
+
+        # filter out messages that are targeted toward other bots
+        if re.search(f"^(!|>>)", content):
+            return None
+
+        # update history with current discussion.
+        m = self.history.add(channel, author, content)
+        log.info(format_message(m))
+
+        # get useful context from EmbeddingDB and save new conversational embeddings
+        selections = await self.get_selections(m, message.guild.id)
+
+        # filter out other commands
+        # TODO: fix this with better command dispatching.
         if re.search("^goat (draw|look)", content, re.I):
             return None
 
@@ -77,30 +125,36 @@ class Bot(commands.Cog):
 
                 if response == parent_message.content:
                     # if goat is repeating, then turn up the temperature
-                    response = await self.get_response(channel, temperature=self.config.high_temperature)
+                    response = await self.get_response(
+                        channel, temperature=self.config.high_temperature
+                    )
                 if response:
                     await message.channel.send(response)
                     self.last_response = response
                     self.history.add(channel, self.config.bot_name, response)
                     # how should this be handled?
                     return True
-                else: 
+                else:
                     # create an idk repsonse
                     response = await self.get_idk()
 
                     if response == self.last_idk:
                         # if goat is repeating, then turn up the temperature
-                        response = await self.get_idk(temperature=self.config.high_temperature)
+                        response = await self.get_idk(
+                            temperature=self.config.high_temperature
+                        )
                     if response:
                         await message.channel.send(response)
                         self.last_idk = response
                         # not sure if this should be added to history
                         # self.history.add(channel, self.config.bot_name, response)
                         return True
-                    else: 
-                        await message.channel.send("I'm not sure what you're trying to say, can you repeat that?")
+                    else:
+                        await message.channel.send(
+                            "I'm not sure what you're trying to say, can you repeat that?"
+                        )
                         return True
-            else: 
+            else:
                 # not sure about this — removes goat query for ppl replying to eachother
                 return None
 
@@ -114,38 +168,49 @@ class Bot(commands.Cog):
             # if goat is repeating, then turn up the temperature to try to
             # break the cycle
             # TODO: this should be server and channel specific.
-            response = await self.get_response(channel, temperature=self.config.high_temperature)
+            response = await self.get_response(
+                channel, temperature=self.config.high_temperature
+            )
         if response:
+            response = response.rstrip().lstrip()
             await message.channel.send(response)
             # record the bots outgoing response in history.
             self.last_response = response
-            self.history.add(channel, self.config.bot_name, response)
+            m = self.history.add(channel, self.config.bot_name, response)
+
+            # add response to edb as well
+            # TODO: update this to multi-line embeddings
+            edb = self.get_edb(message.guild.id)
+            msg = format_message(m)
+            embedding = await embeddings.get_embedding(msg)
+            edb.add(msg, embedding)
             # autocrat: added for symetry
             return True
-        # autocrat: added idk repsonse 
+        # autocrat: added idk repsonse
         else:
             # create an 'idk' repsonse
-                    response = await self.get_idk()
+            response = await self.get_idk()
 
-                    if response == self.last_idk:
-                        # if goat is repeating, then turn up the temperature
-                        response = await self.get_idk(temperature=self.config.high_temperature)
-                    if response:
-                        await message.channel.send(response)
-                        self.last_idk = response
-                        # not sure if this should be added to history
-                        # self.history.add(channel, self.config.bot_name, response)
-                        return True
-                    else: 
-                        await message.channel.send("I'm not sure what you're trying to say, can you repeat that?")
-                        return True
+            if response == self.last_idk:
+                # if goat is repeating, then turn up the temperature
+                response = await self.get_idk(temperature=self.config.high_temperature)
+            if response:
+                await message.channel.send(response)
+                self.last_idk = response
+                # not sure if this should be added to history
+                # self.history.add(channel, self.config.bot_name, response)
+                return True
+            else:
+                await message.channel.send(
+                    "I'm not sure what you're trying to say, can you repeat that?"
+                )
+                return True
 
-
-
-    async def get_response(self, channel, temperature=None):
+    async def get_response(self, channel, selections, temperature=None):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
-        prompt = self.get_prompt(self.history.get(channel))
+        prompt = self.get_prompt(channel, selections)
+        log.info(prompt)
 
         if temperature is None:
             temperature = self.config.temperature
@@ -158,10 +223,9 @@ class Bot(commands.Cog):
             top_p=self.config.top_p,
             frequency_penalty=self.config.frequency_penalty,
             presence_penalty=self.config.presence_penalty,
-            stop="###",
+            stop="<",
         )
         return r.choices[0].text
-
 
     # autocrat: added this to create an idk response, don't think it works but you get the idea
     async def get_idk(self, temperature=None):
@@ -181,6 +245,3 @@ class Bot(commands.Cog):
             stop="###",
         )
         return r.choices[0].text
-
-
-

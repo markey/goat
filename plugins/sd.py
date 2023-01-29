@@ -7,8 +7,7 @@ class Bot(commands.Cog):
     def __init__(self, bot, config):
         self.bot = bot
         self.config = config
-        # TODO pull name from bot
-        self.model = replicate.models.get("stability-ai/stable-diffusion")
+        self.model = replicate.models.get("cjwbw/stable-diffusion-v2")
 
 
     @commands.Cog.listener()
@@ -24,13 +23,15 @@ class Bot(commands.Cog):
         # respond when triggered
         if not re.search("^goat draw ", content, re.I):
             return None
+        
+        await message.add_reaction("✏️")
 
         prompt = content[10:]
         print("Requesting image for: ", prompt)
         prediction = replicate.predictions.create(
             version=self.model.versions.list()[0],
             input={
-                "prompt": prompt,
+                "prompt": prompt
             })
         while prediction.status not in ["succeeded", "failed", "canceled"]:
             prediction.reload()

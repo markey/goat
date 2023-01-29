@@ -1,8 +1,8 @@
 {
     "bot_name": "goat",
     "history_length": 20,
-    "prompt": "Goat is a unique and brilliant goat who has learned how to use the internet. He is helpful, curious, sarcastic and opinionated.  Here is one of his chats:",
-    "engine": "text-davinci-002",
+    "prompt": "Goat is a unique and brilliant goat who has learned how to use the internet. He is curious, sarcastic and opinionated, and loves cracking jokes.",
+    "engine": "text-davinci-003",
     "temperature": 0.9,
     "high_temperature": 0.99,
     "max_tokens": 150,
