@@ -108,7 +108,7 @@ class Bot(commands.Cog):
         if not re.search("goat", content, re.I):
             return None
 
-
+        # respond when mentioned
         response = await self.get_response(channel)
         if response == self.last_response:
             # if goat is repeating, then turn up the temperature to try to
@@ -161,7 +161,7 @@ class Bot(commands.Cog):
             stop="###",
         )
         return r.choices[0].text
-        
+
 
     # autocrat: added this to create an idk response, don't think it works but you get the idea
     async def get_idk(self, temperature=None):
