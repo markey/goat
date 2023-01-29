@@ -113,10 +113,13 @@ class Bot(commands.Cog):
             return None
 
         # reply to messages that are replies to goat, or messages that mention his name
+        reply_author = None
         if message.reference:
-            if message.reference.cached_message.author.name != self.config.bot_name:
-                return None
-        elif not re.search("goat", content, re.I):
+            if message.reference.cached_message is not None:
+                reply_author = message.reference.cached_message.author.name
+        if reply_author != self.config.bot_name and not re.search(
+            "goat", content, re.I
+        ):
             return None
 
         # get useful context from EmbeddingDB and save new conversational embeddings
