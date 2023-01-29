@@ -107,104 +107,55 @@ class Bot(commands.Cog):
         m = self.history.add(channel, author, content)
         log.info(format_message(m))
 
-        # get useful context from EmbeddingDB and save new conversational embeddings
-        selections = await self.get_selections(m, message.guild.id)
-
         # filter out other commands
         # TODO: fix this with better command dispatching.
         if re.search("^goat (draw|look)", content, re.I):
             return None
 
-        # autocrat: added this for goat to repond when people reply to him
-        # respond when replied to
+        # reply to messages that are replies to goat, or messages that mention his name
         if message.reference:
-            parent_message = message.reference.cached_message
-
-            if parent_message.author.name == self.config.bot_name:
-                response = await self.get_response(channel)
-
-                if response == parent_message.content:
-                    # if goat is repeating, then turn up the temperature
-                    response = await self.get_response(
-                        channel, temperature=self.config.high_temperature
-                    )
-                if response:
-                    await message.channel.send(response)
-                    self.last_response = response
-                    self.history.add(channel, self.config.bot_name, response)
-                    # how should this be handled?
-                    return True
-                else:
-                    # create an idk repsonse
-                    response = await self.get_idk()
-
-                    if response == self.last_idk:
-                        # if goat is repeating, then turn up the temperature
-                        response = await self.get_idk(
-                            temperature=self.config.high_temperature
-                        )
-                    if response:
-                        await message.channel.send(response)
-                        self.last_idk = response
-                        # not sure if this should be added to history
-                        # self.history.add(channel, self.config.bot_name, response)
-                        return True
-                    else:
-                        await message.channel.send(
-                            "I'm not sure what you're trying to say, can you repeat that?"
-                        )
-                        return True
-            else:
-                # not sure about this — removes goat query for ppl replying to eachother
+            if message.reference.cached_message.author.name != self.config.bot_name:
                 return None
-
-        # don't respond when not mentioned or replied to
-        if not re.search("goat", content, re.I):
+        elif not re.search("goat", content, re.I):
             return None
 
-        # respond when mentioned
-        response = await self.get_response(channel)
+        # get useful context from EmbeddingDB and save new conversational embeddings
+        selections = await self.get_selections(m, message.guild.id)
+
+        msg = format_message(m)
+        embedding = await embeddings.get_embedding(msg)
+        self.get_edb(message.guild.id).add(msg, embedding)
+
+        response = await self.get_response(channel, selections)
+
         if response == self.last_response:
-            # if goat is repeating, then turn up the temperature to try to
-            # break the cycle
-            # TODO: this should be server and channel specific.
+            # if goat is repeating, then turn up the temperature
             response = await self.get_response(
                 channel, temperature=self.config.high_temperature
             )
-        if response:
-            response = response.rstrip().lstrip()
-            await message.channel.send(response)
-            # record the bots outgoing response in history.
-            self.last_response = response
-            m = self.history.add(channel, self.config.bot_name, response)
-
-            # add response to edb as well
-            # TODO: update this to multi-line embeddings
-            edb = self.get_edb(message.guild.id)
-            msg = format_message(m)
-            embedding = await embeddings.get_embedding(msg)
-            edb.add(msg, embedding)
-            # autocrat: added for symetry
-            return True
-        # autocrat: added idk repsonse
-        else:
-            # create an 'idk' repsonse
+        if not response:
+            # create an idk repsonse
             response = await self.get_idk()
 
             if response == self.last_idk:
                 # if goat is repeating, then turn up the temperature
                 response = await self.get_idk(temperature=self.config.high_temperature)
-            if response:
-                await message.channel.send(response)
-                self.last_idk = response
-                # not sure if this should be added to history
-                # self.history.add(channel, self.config.bot_name, response)
-                return True
-            else:
-                await message.channel.send(
+
+            if not response:
+                response = (
                     "I'm not sure what you're trying to say, can you repeat that?"
                 )
-                return True
+
+        await message.channel.send(response)
+        self.last_idk = response
+        self.history.add(channel, self.config.bot_name, response)
+
+        # add response to edb as well
+        # TODO: update this to multi-line embeddings
+        edb = self.get_edb(message.guild.id)
+        msg = format_message(m)
+        embedding = await embeddings.get_embedding(msg)
+        edb.add(msg, embedding)
 
     async def get_response(self, channel, selections, temperature=None):
         # TODO: verify prompt length is limited to the correct
