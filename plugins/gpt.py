@@ -28,6 +28,8 @@ class Bot(commands.Cog):
         self.config = config
         self.history = MessageHistory(self.config.history_length)
         self.last_response = None
+        # autocrat: added this for for non-response messages
+        self.last_idk = None
 
     def get_prompt(self, messages):
         log = []
@@ -44,6 +46,7 @@ class Bot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        # autocrat: maybe use channel id to account for repeat channel names accross servers?
         channel = message.channel.name
         author = message.author.name
         content = message.content
@@ -64,9 +67,47 @@ class Bot(commands.Cog):
         if re.search("^goat (draw|look)", content, re.I):
             return None
 
-        # respond when mentioned
+        # autocrat: added this for goat to repond when people reply to him
+        # respond when replied to
+        if message.reference:
+            parent_message = message.reference.cached_message
+
+            if parent_message.author.name == self.config.bot_name:
+                response = await self.get_response(channel)
+
+                if response == parent_message.content:
+                    # if goat is repeating, then turn up the temperature
+                    response = await self.get_response(channel, temperature=self.config.high_temperature)
+                if response:
+                    await message.channel.send(response)
+                    self.last_response = response
+                    self.history.add(channel, self.config.bot_name, response)
+                    # how should this be handled?
+                    return True
+                else: 
+                    # create an idk repsonse
+                    response = await self.get_idk()
+
+                    if response == self.last_idk:
+                        # if goat is repeating, then turn up the temperature
+                        response = await self.get_idk(temperature=self.config.high_temperature)
+                    if response:
+                        await message.channel.send(response)
+                        self.last_idk = response
+                        # not sure if this should be added to history
+                        # self.history.add(channel, self.config.bot_name, response)
+                        return True
+                    else: 
+                        await message.channel.send("I'm not sure what you're trying to say, can you repeat that?")
+                        return True
+            else: 
+                # not sure about this — removes goat query for ppl replying to eachother
+                return None
+
+        # don't respond when not mentioned or replied to
         if not re.search("goat", content, re.I):
             return None
+
 
         response = await self.get_response(channel)
         if response == self.last_response:
@@ -79,6 +120,26 @@ class Bot(commands.Cog):
             # record the bots outgoing response in history.
             self.last_response = response
             self.history.add(channel, self.config.bot_name, response)
+            # autocrat: added for symetry
+            return True
+        # autocrat: added idk repsonse 
+        else:
+            # create an 'idk' repsonse
+                    response = await self.get_idk()
+
+                    if response == self.last_idk:
+                        # if goat is repeating, then turn up the temperature
+                        response = await self.get_idk(temperature=self.config.high_temperature)
+                    if response:
+                        await message.channel.send(response)
+                        self.last_idk = response
+                        # not sure if this should be added to history
+                        # self.history.add(channel, self.config.bot_name, response)
+                        return True
+                    else: 
+                        await message.channel.send("I'm not sure what you're trying to say, can you repeat that?")
+                        return True
+
 
 
     async def get_response(self, channel, temperature=None):
@@ -100,5 +161,26 @@ class Bot(commands.Cog):
             stop="###",
         )
         return r.choices[0].text
+        
+
+    # autocrat: added this to create an idk response, don't think it works but you get the idea
+    async def get_idk(self, temperature=None):
+        prompt = "repeat this in your own words: 'I'm not sure what you mean, can you try again?'"
+
+        if temperature is None:
+            temperature = self.config.temperature
+
+        r = openai.Completion.create(
+            engine=self.config.engine,
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=self.config.max_tokens,
+            top_p=self.config.top_p,
+            frequency_penalty=self.config.frequency_penalty,
+            presence_penalty=self.config.presence_penalty,
+            stop="###",
+        )
+        return r.choices[0].text
+
 
 
