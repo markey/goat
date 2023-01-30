@@ -109,7 +109,7 @@ class Bot(commands.Cog):
 
         # filter out other commands
         # TODO: fix this with better command dispatching.
-        if re.search("^goat (draw|look)", content, re.I):
+        if re.search("^goat,? (draw|look)", content, re.I):
             return None
 
         # reply to messages that are replies to goat, or messages that mention his name

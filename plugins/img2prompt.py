@@ -4,13 +4,13 @@ import asyncio
 import replicate
 import re
 
+
 class Bot(commands.Cog):
     def __init__(self, bot, config):
         self.bot = bot
         self.config = config
         # TODO pull name from bot
         self.model = replicate.models.get("methexis-inc/img2prompt")
-
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -24,7 +24,7 @@ class Bot(commands.Cog):
             return None
 
         # respond when triggered
-        if not re.search("^goat look", content, re.I):
+        if not re.search("^goat,? look( at)?", content, re.I):
             return None
 
         # extract any listed urls from the message
@@ -46,7 +46,8 @@ class Bot(commands.Cog):
             version=self.model.versions.list()[0],
             input={
                 "image": url,
-            })
+            },
+        )
         while prediction.status not in ["succeeded", "failed", "canceled"]:
             prediction.reload()
             print(f"Waiting for img2prompt: {url}")
@@ -55,5 +56,7 @@ class Bot(commands.Cog):
         if prediction.status == "succeeded":
             await message.reply(prediction.output)
         else:
-            print("I tried to look at it, but I got status {}".format(prediction.status))
+            print(
+                "I tried to look at it, but I got status {}".format(prediction.status)
+            )
             await message.reply("I couldn't see anything.")
