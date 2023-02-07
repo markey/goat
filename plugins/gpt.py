@@ -1,8 +1,6 @@
 from collections import defaultdict, deque, namedtuple
-import collections
 from discord.ext import commands
 import openai
-import random
 import re
 import glog as log
 
@@ -78,7 +76,7 @@ class Bot(commands.Cog):
         embedding = await embeddings.get_embedding(full_text)
         nearest = edb.get_nearest(embedding, limit=10)
         edb.add(full_text, embedding)
-        return nearest
+        return [i.payload["text"] for i in nearest]
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -169,7 +167,7 @@ class Bot(commands.Cog):
         if temperature is None:
             temperature = self.config.temperature
 
-        r = openai.Completion.create(
+        r = await openai.Completion.acreate(
             engine=self.config.engine,
             prompt=prompt,
             temperature=temperature,
@@ -188,7 +186,7 @@ class Bot(commands.Cog):
         if temperature is None:
             temperature = self.config.temperature
 
-        r = openai.Completion.create(
+        r = await openai.Completion.create(
             engine=self.config.engine,
             prompt=prompt,
             temperature=temperature,

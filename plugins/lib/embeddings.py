@@ -1,9 +1,10 @@
-import asyncopenai.asyncopenai as openai
-import glog as log
 import json
 import uuid
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct, Distance, UpdateStatus, VectorParams
+import openai
+
+import glog as log
 
 
 def get_qdrant_api_key():
@@ -13,15 +14,19 @@ def get_qdrant_api_key():
 
 
 async def get_embedding(text):
-    r = await openai.create_embedding(text)
-    if r is not None:
-        try:
-            embedding = r["data"][0]["embedding"]
-        except (KeyError, IndexError) as e:
-            log.error(f"Error getting embedding: {e}")
-        else:
-            return embedding
-    return None
+    text = text.replace("\n", " ")
+    try:
+        r = await openai.Embedding.acreate(input=[text], model="text-embedding-ada-002")
+    except openai.OpenAIError as e:
+        log.info(f"Error getting embedding: {e}")
+        return
+
+    try:
+        embedding = r["data"][0]["embedding"]
+    except (KeyError, IndexError) as e:
+        log.error(f"Error getting embedding: {e}")
+        return
+    return embedding
 
 
 class EmbeddingDB:
@@ -73,17 +78,7 @@ class EmbeddingDB:
             limit=limit,
             query_vector=embedding,
         )
-        if search_result:
-            id = search_result[0].id
-            score = search_result[0].score
-            # retrieve the text and distance
-            results = self.client.retrieve(
-                self.collection_name, ids=[r.id for r in search_result]
-            )
-            return [r.payload["text"] for r in results]
-
-        else:
-            return None
+        return search_result
 
     def reset(self):
         self.client.delete_collection(self.collection_name)
