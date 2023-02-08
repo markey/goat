@@ -8,5 +8,6 @@
     "max_tokens": 150,
     "top_p": 1,
     "frequency_penalty": 0.025,
-    "presence_penalty": 0.6
+    "presence_penalty": 0.6,
+    "qdrant_host": "5011b95c-b05d-474e-863b-07189e741f3d.us-east-1-0.aws.cloud.qdrant.io"
 }

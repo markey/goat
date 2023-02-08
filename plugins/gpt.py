@@ -62,13 +62,16 @@ class Bot(commands.Cog):
         # TODO incorporate channel here
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
-        return "{}\n\nHere are some relevent bits of conversation.\n\n{}\nHere is a chat log.\n{}<{}>:".format(
+        return "{}\n\nHere are some relevant bits of conversation.\n\n{}\nHere is a chat log.\n{}<{}>:".format(
             self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
         )
 
     def get_edb(self, guild_id):
         if guild_id not in self.edbs:
-            self.edbs[guild_id] = embeddings.EmbeddingDB(f"goat_history_{guild_id}")
+            self.edbs[guild_id] = embeddings.EmbeddingDB(
+                f"goat_history_{guild_id}", host=self.config.qdrant_host
+            )
+
         return self.edbs[guild_id]
 
     @commands.Cog.listener()

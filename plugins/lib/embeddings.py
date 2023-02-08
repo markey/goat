@@ -30,11 +30,11 @@ async def get_embedding(text):
 
 
 class EmbeddingDB:
-    def __init__(self, collection_name="hottakes"):
+    def __init__(self, collection_name, host, port=6333):
         self.api_key = get_qdrant_api_key()
         self.client = QdrantClient(
-            host="5011b95c-b05d-474e-863b-07189e741f3d.us-east-1-0.aws.cloud.qdrant.io",
-            port=6333,
+            host=host,
+            port=port,
             api_key=self.api_key,
         )
         self.collection_name = collection_name
