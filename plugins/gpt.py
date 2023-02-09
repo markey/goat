@@ -3,7 +3,7 @@ from discord.ext import commands
 import openai
 import re
 import glog as log
-from retrying import retry
+from tenacity import retry, stop_after_attempt
 
 from .lib import embeddings
 
@@ -147,7 +147,7 @@ class Bot(commands.Cog):
 
         await message.channel.send(response)
 
-    @retry(stop_max_attempt_number=3)
+    @retry(stop=stop_after_attempt(5))
     async def get_response(self, channel, selections, temperature=None):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
@@ -169,13 +169,14 @@ class Bot(commands.Cog):
         )
         return r.choices[0].text
 
+    @retry(stop=stop_after_attempt(5))
     async def get_history_embedding(self, channel):
         history = self.history.get_formatted_history(channel, 2)
         embedding = await embeddings.get_embedding(history)
         return history, embedding
 
     # autocrat: added this to create an idk response, don't think it works but you get the idea
-    @retry(stop_max_attempt_number=3)
+    @retry(stop=stop_after_attempt(5))
     async def get_idk(self, temperature=None):
         prompt = "Rephrase the following: I'm not sure what you mean, can you try again?\nRephrase:"
 
