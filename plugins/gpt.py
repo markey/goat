@@ -90,6 +90,7 @@ class Bot(commands.Cog):
         response = await self.get_response(
             channel, selections, last_response=self.last_response
         )
+        response = response.lstrip()
         log.info(f"Got response: {response}")
         if not response:
             # create an idk repsonse
