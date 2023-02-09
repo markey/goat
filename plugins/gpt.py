@@ -125,7 +125,7 @@ class Bot(commands.Cog):
         if response == self.last_response:
             # if goat is repeating, then turn up the temperature
             response = await self.get_response(
-                channel, temperature=self.config.high_temperature
+                channel, selections, temperature=self.config.high_temperature
             )
         if not response:
             # create an idk repsonse
