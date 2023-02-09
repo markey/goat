@@ -46,9 +46,8 @@ class Bot(commands.Cog):
         channel = message.channel.name
         author = message.author.name
 
-        # don't respond to my own message events, but do save them to history.
+        # don't respond to my own message events
         if author == self.config.bot_name:
-            self.history.add_message(message)
             return None
 
         # filter out messages from other bots
@@ -81,47 +80,55 @@ class Bot(commands.Cog):
         ):
             return None
 
-        # get useful context from EmbeddingDB and save new conversational embeddings
+        history = self.get_history(channel)
+        embedding = await self.get_embedding(history)
+
         edb = self.get_edb(message.guild.id)
-        _, embedding = await self.get_history_embedding(channel)
         nearest = edb.get_nearest(embedding, limit=10)
         selections = [i.payload["text"] for i in nearest]
 
-        response = await self.get_response(channel, selections)
-        if response == self.last_response:
-            # if goat is repeating, then turn up the temperature
-            response = await self.get_response(
-                channel, selections, temperature=self.config.high_temperature
-            )
+        response = await self.get_response(
+            channel, selections, last_response=self.last_response
+        )
+        log.info(f"Got response: {response}")
         if not response:
             # create an idk repsonse
-            response = await self.get_idk()
-            if response == self.last_idk:
-                # if goat is repeating, then turn up the temperature
-                response = await self.get_idk(temperature=self.config.high_temperature)
-            if not response:
-                response = (
-                    "I'm not sure what you're trying to say, can you repeat that?"
-                )
+            response = await self.get_idk(self.last_idk)
         self.last_response = response
         self.last_idk = response
 
-        # save goat's response as an embedding.
-        text, embedding = await self.get_history_embedding(channel)
+        # save goat's response with the previous embedding for the question
+        self.history.add(channel, self.config.bot_name, response)
+        text = self.get_history(channel)
+        log.info(f"Got history for embedding: {text}")
         edb.add(text, embedding)
 
         await message.channel.send(response)
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_response(self, channel, selections, temperature=None):
+    async def get_response(self, channel, selections, last_response=None):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
         prompt = self.get_prompt(channel, selections)
         log.info(prompt)
+        response = await self.get_completion(prompt)
+        if response == last_response:
+            response = await self.get_completion(
+                prompt, temperature=self.config.high_temperature
+            )
+        return response
 
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    async def get_embedding(self, text):
+        return await embeddings.get_embedding(text)
+
+    def get_history(self, channel):
+        return self.history.get_formatted_history(channel, 2)
+
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    async def get_completion(self, prompt, temperature=None):
         if temperature is None:
             temperature = self.config.temperature
-
         r = await openai.Completion.acreate(
             engine=self.config.engine,
             prompt=prompt,
@@ -134,28 +141,15 @@ class Bot(commands.Cog):
         )
         return r.choices[0].text
 
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_history_embedding(self, channel):
-        history = self.history.get_formatted_history(channel, 2)
-        embedding = await embeddings.get_embedding(history)
-        return history, embedding
-
     # autocrat: added this to create an idk response, don't think it works but you get the idea
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_idk(self, temperature=None):
+    async def get_idk(self, last_idk=None):
         prompt = "Rephrase the following: I'm not sure what you mean, can you try again?\nRephrase:"
-
-        if temperature is None:
-            temperature = self.config.temperature
-
-        r = await openai.Completion.create(
-            engine=self.config.engine,
-            prompt=prompt,
-            temperature=temperature,
-            max_tokens=self.config.max_tokens,
-            top_p=self.config.top_p,
-            frequency_penalty=self.config.frequency_penalty,
-            presence_penalty=self.config.presence_penalty,
-            stop="###",
-        )
-        return r.choices[0].text
+        response = await self.get_completion(prompt)
+        if response == last_idk:
+            response = await self.get_completion(
+                prompt, temperature=self.config.high_temperature
+            )
+        if response is None:
+            response = "I didn't get that, can you say that again?"
+        return response
