@@ -6,9 +6,10 @@ import re
 
 
 class Bot(commands.Cog):
-    def __init__(self, bot, config):
+    def __init__(self, bot, config, history):
         self.bot = bot
         self.config = config
+        self.history = history
         # TODO pull name from bot
         self.model = replicate.models.get("methexis-inc/img2prompt")
 

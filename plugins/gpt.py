@@ -5,48 +5,14 @@ import re
 import glog as log
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from .lib import embeddings
-
-
-# TODO add server to message history for multi server support.
-# TODO convert these things to real identifiers
-Message = namedtuple("Message", ["channel", "author", "text"])
-
-
-def format_message(m):
-    return f"<{m.author}>: {m.text}"
-
-
-class MessageHistory:
-    def __init__(self, history_length):
-        self.history_length = history_length
-        self.history = defaultdict(list)
-
-    def add(self, channel, author, text):
-        m = Message(channel, author, text)
-        log.info(format_message(m))
-        self.history[channel].append(m)
-        while len(self.history[channel]) > self.history_length:
-            self.history[channel].pop(0)
-        return m
-
-    def get(self, channel):
-        return list(self.history[channel])
-
-    def get_formatted_history(self, channel, length=None):
-        if length is None:
-            length = self.history_length
-        return (
-            "\n".join([format_message(m) for m in self.history[channel][-length:]])
-            + "\n"
-        )
+from plugins.lib import embeddings
 
 
 class Bot(commands.Cog):
-    def __init__(self, bot, config):
+    def __init__(self, bot, config, history):
         self.bot = bot
         self.config = config
-        self.history = MessageHistory(self.config.history_length)
+        self.history = history
         self.last_response = None
         # autocrat: added this for for non-response messages
         self.last_idk = None
@@ -80,9 +46,9 @@ class Bot(commands.Cog):
         channel = message.channel.name
         author = message.author.name
 
-        # don't respond to my own message events
+        # don't respond to my own message events, but do save them to history.
         if author == self.config.bot_name:
-            m = self.history.add(channel, author, message.content)
+            self.history.add_message(message)
             return None
 
         # filter out messages from other bots
@@ -102,7 +68,7 @@ class Bot(commands.Cog):
             return None
 
         # add message to history--this is required to happen first so embedding lookups work.
-        m = self.history.add(channel, author, message.content)
+        m = self.history.add_message(message)
 
         # reply to messages that are replies to goat, or messages that mention his name
         try:
@@ -140,8 +106,7 @@ class Bot(commands.Cog):
         self.last_response = response
         self.last_idk = response
 
-        # add outgoing message to history and save goat's response as an embedding.
-        self.history.add(channel, self.config.bot_name, response)
+        # save goat's response as an embedding.
         text, embedding = await self.get_history_embedding(channel)
         edb.add(text, embedding)
 

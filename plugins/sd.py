@@ -5,9 +5,10 @@ import re
 
 
 class Bot(commands.Cog):
-    def __init__(self, bot, config):
+    def __init__(self, bot, config, history):
         self.bot = bot
         self.config = config
+        self.history = history
         self.model = replicate.models.get("cjwbw/stable-diffusion-v2")
 
     @commands.Cog.listener()
@@ -16,7 +17,6 @@ class Bot(commands.Cog):
         content = message.content
 
         # don't respond to my own message events
-        # TODO: update to unique IDs
         if author == self.config.bot_name:
             return None
 
@@ -38,7 +38,9 @@ class Bot(commands.Cog):
             await asyncio.sleep(0.5)
 
         if prediction.status == "succeeded":
-            await message.reply("{}\n{}".format(prompt, prediction.output[0]))
+            response = "{}\n{}".format(prompt, prediction.output[0])
         else:
             print("Got status {} for {}".format(prediction.status, prompt))
-            await message.reply("I couldn't draw that.")
+            response = "I couldn't draw that."
+
+        await message.reply(response)
