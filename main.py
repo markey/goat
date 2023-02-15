@@ -4,23 +4,10 @@ import json
 import os
 
 import util.history
-
-with open("config.json") as f:
-    config = json.load(f)
+import util.config
 
 
-class Config:
-    def __init__(self, filename="config.json"):
-        with open("config.json") as f:
-            self.config = json.load(f)
-
-    def __getattr__(self, key):
-        return self.config[key]
-
-
-BOT_NAME = "goat"
-
-config = Config()
+config = util.config.Config()
 
 bot = commands.Bot(command_prefix="!")
 
