@@ -19,7 +19,7 @@ class Bot(commands.Cog):
         self.edbs = {}
 
     def get_selections_prompt(self, selections):
-        return "As a reminder, here are some selections from previous conversations.\n\n{}\n\n".format(
+        return "These are snippets of previous conversations that appear to be related to the current conversation.\n\n{}\n\n".format(
             "".join([f"{i}: {s}\n" for i, s in enumerate(selections)])
         )
 
@@ -28,7 +28,7 @@ class Bot(commands.Cog):
         # TODO incorporate channel here
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
-        return "{}\n\nHere are some relevant bits of conversation.\n\n{}\nHere is a chat log.\n{}<{}>:".format(
+        return "{}\n\n{}\nHere is the current conversation.\n{}<{}>:".format(
             self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
         )
 
@@ -69,6 +69,10 @@ class Bot(commands.Cog):
         # add message to history--this is required to happen first so embedding lookups work.
         m = self.history.add_message(message)
 
+        edb = self.get_edb(message.guild.id)
+        history = self.get_history(channel)
+        embedding = await self.get_embedding(history)
+
         # reply to messages that are replies to goat, or messages that mention his name
         try:
             # message.reference will be None if the message is not a reply
@@ -78,12 +82,9 @@ class Bot(commands.Cog):
         if reply_author != self.config.bot_name and not re.search(
             "goat", message.content, re.I
         ):
+            edb.add(history, embedding)
             return None
 
-        history = self.get_history(channel)
-        embedding = await self.get_embedding(history)
-
-        edb = self.get_edb(message.guild.id)
         nearest = edb.get_nearest(embedding, limit=10)
         selections = [i.payload["text"] for i in nearest]
 
@@ -127,11 +128,13 @@ class Bot(commands.Cog):
         return self.history.get_formatted_history(channel, 2)
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_completion(self, prompt, temperature=None):
+    async def get_completion(self, prompt, temperature=None, engine=None):
         if temperature is None:
             temperature = self.config.temperature
+        if engine is None:
+            engine = self.config.engine
         r = await openai.Completion.acreate(
-            engine=self.config.engine,
+            engine=engine,
             prompt=prompt,
             temperature=temperature,
             max_tokens=self.config.max_tokens,
