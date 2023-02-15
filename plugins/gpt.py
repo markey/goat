@@ -24,13 +24,24 @@ class Bot(commands.Cog):
         )
 
     def get_prompt(self, channel, selections):
-        messages = self.history.get(channel)
-        # TODO incorporate channel here
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
         return "{}\n\n{}\nHere is the current conversation.\n{}<{}>:".format(
             self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
         )
+
+    async def should_respond(self, channel):
+        history = self.history.get_formatted_history(channel)
+        prompt = f"You are goat. You are interested in AI, opportunities to make a joke, and effective accelerationism (e/acc)\n\nPlease rate your interest level in the following conversation by writing a number from 1 to 10.\n\n{history}\n\nINTEREST:"
+        # get completion from the curie model
+        response = await self.get_completion(prompt, engine="text-curie-001")
+        interest = 0
+        try:
+            interest = int(response.strip())
+        except:
+            pass
+        print(f"{interest=}")
+        return interest > 8
 
     def get_edb(self, guild_id):
         if guild_id not in self.edbs:
@@ -80,9 +91,14 @@ class Bot(commands.Cog):
             # TODO: use the referenced message to construct the embedding.
         except:
             reply_author = None
+        # if the message is not directly targeting goat, see if goat wants to respond anyway.
+        want_respond = True
         if reply_author != self.config.bot_name and not re.search(
             "goat", message.content, re.I
         ):
+            want_respond = await self.should_respond(channel)
+
+        if not want_respond:
             edb.add(history, embedding)
             return None
 
