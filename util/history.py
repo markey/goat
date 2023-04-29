@@ -23,7 +23,7 @@ class MessageHistory:
 
     def add_message(self, message):
         """Takes a discord message object and adds it to the history."""
-        self.add(message.channel.name, message.author.name, message.content)
+        self.add(message.channel.name, message.author.display_name, message.content)
 
     def get(self, channel):
         return list(self.history[channel])

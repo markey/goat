@@ -55,7 +55,7 @@ class Bot(commands.Cog):
     async def on_message(self, message):
         # TODO: autocrat: maybe use channel id to account for repeat channel names accross servers?
         channel = message.channel.name
-        author = message.author.name
+        author = message.author.display_name
 
         # don't respond to my own message events
         if author == self.config.bot_name:
@@ -87,7 +87,7 @@ class Bot(commands.Cog):
         # reply to messages that are replies to goat, or messages that mention his name
         try:
             # message.reference will be None if the message is not a reply
-            reply_author = message.reference.cached_message.author.name
+            reply_author = message.reference.cached_message.author.display_name
             # TODO: use the referenced message to construct the embedding.
         except:
             reply_author = None
