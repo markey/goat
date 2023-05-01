@@ -96,8 +96,9 @@ class Bot(commands.Cog):
         if reply_author != self.config.bot_name and not re.search(
             "goat", message.content, re.I
         ):
-            want_respond = await self.should_respond(channel)
-
+            # want_respond = await self.should_respond(channel)
+            want_respond = False
+            
         if not want_respond:
             edb.add(history, embedding)
             return None
