@@ -98,7 +98,7 @@ class Bot(commands.Cog):
         ):
             # want_respond = await self.should_respond(channel)
             want_respond = False
-            
+
         if not want_respond:
             edb.add(history, embedding)
             return None
@@ -151,9 +151,10 @@ class Bot(commands.Cog):
             temperature = self.config.temperature
         if engine is None:
             engine = self.config.engine
-        r = await openai.Completion.acreate(
-            engine=engine,
-            prompt=prompt,
+        r = await openai.ChatCompletion.acreate(
+            model=engine,
+            messages=[
+                {"role": "system", "content": prompt}],
             temperature=temperature,
             max_tokens=self.config.max_tokens,
             top_p=self.config.top_p,
@@ -161,7 +162,7 @@ class Bot(commands.Cog):
             presence_penalty=self.config.presence_penalty,
             stop="<",
         )
-        return r.choices[0].text
+        return r["choices"][0]["message"]["content"]
 
     # autocrat: added this to create an idk response, don't think it works but you get the idea
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
