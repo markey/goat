@@ -30,7 +30,7 @@ multidict==6.0.2
 mypy-extensions==1.0.0
 nodeenv==1.7.0
 numpy==1.22.3
-openai==0.26.4
+openai==0.27.6
 openpyxl==3.0.9
 packaging==23.0
 pandas==1.4.1
