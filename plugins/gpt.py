@@ -83,6 +83,7 @@ class Bot(commands.Cog):
             self.config.bot_name, message.content, re.I
         ):
             edb.add(history, embedding)
+            log.info("Early return")
             return None
 
         nearest = edb.get_nearest(embedding, limit=10)
