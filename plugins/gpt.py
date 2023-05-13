@@ -15,7 +15,6 @@ class Bot(commands.Cog):
         self.history = history
         self.last_response = None
         # autocrat: added this for for non-response messages
-        self.last_idk = None
         self.edbs = {}
 
     def get_selections_prompt(self, selections):
@@ -29,19 +28,6 @@ class Bot(commands.Cog):
         return "{}\n\n{}\nHere is the current conversation.\n{}<{}>:".format(
             self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
         )
-
-    async def should_respond(self, channel):
-        history = self.history.get_formatted_history(channel)
-        prompt = f"You are goat. You are interested in AI, opportunities to make a joke, and effective accelerationism (e/acc)\n\nPlease rate your interest level in the following conversation by writing a number from 1 to 10.\n\n{history}\n\nINTEREST:"
-        # get completion from the curie model
-        response = await self.get_completion(prompt, engine="text-curie-001")
-        interest = 0
-        try:
-            interest = int(response.strip())
-        except:
-            pass
-        print(f"{interest=}")
-        return interest > 8
 
     def get_edb(self, guild_id):
         if guild_id not in self.edbs:
@@ -84,22 +70,18 @@ class Bot(commands.Cog):
         history = self.get_history(channel)
         embedding = await self.get_embedding(history)
 
+        reply_author = ""
         # reply to messages that are replies to goat, or messages that mention his name
         try:
             # message.reference will be None if the message is not a reply
             reply_author = message.reference.cached_message.author.display_name
             # TODO: use the referenced message to construct the embedding.
         except:
-            reply_author = None
-        # if the message is not directly targeting goat, see if goat wants to respond anyway.
-        want_respond = True
-        if reply_author != self.config.bot_name and not re.search(
-            "goat", message.content, re.I
-        ):
-            # want_respond = await self.should_respond(channel)
-            want_respond = False
+            reply_author = ""
 
-        if not want_respond:
+        if reply_author.lower() != self.config.bot_name.lower() and not re.search(
+            self.config.bot_name, message.content, re.I
+        ):
             edb.add(history, embedding)
             return None
 
@@ -111,11 +93,7 @@ class Bot(commands.Cog):
         )
         response = response.lstrip()
         log.info(f"Got response: {response}")
-        if not response:
-            # create an idk repsonse
-            response = await self.get_idk(self.last_idk)
         self.last_response = response
-        self.last_idk = response
 
         # save goat's response with the previous embedding for the question
         self.history.add(channel, self.config.bot_name, response)
@@ -163,16 +141,3 @@ class Bot(commands.Cog):
             stop="<",
         )
         return r["choices"][0]["message"]["content"]
-
-    # autocrat: added this to create an idk response, don't think it works but you get the idea
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_idk(self, last_idk=None):
-        prompt = "Rephrase the following: I'm not sure what you mean, can you try again?\nRephrase:"
-        response = await self.get_completion(prompt)
-        if response == last_idk:
-            response = await self.get_completion(
-                prompt, temperature=self.config.high_temperature
-            )
-        if response is None:
-            response = "I didn't get that, can you say that again?"
-        return response
