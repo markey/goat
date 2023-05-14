@@ -70,19 +70,22 @@ class Bot(commands.Cog):
         history = self.get_history(channel)
         embedding = await self.get_embedding(history)
 
-        reply_author = ""
         # reply to messages that are replies to goat, or messages that mention his name
-        try:
-            # message.reference will be None if the message is not a reply
-            reply_author = message.reference.cached_message.author.display_name
-            # TODO: use the referenced message to construct the embedding.
-        except:
-            log.info("Message is not a reply")
-            reply_author = ""
+        want_reply = False
+        if re.search(self.config.bot_name, message.content, re.I):
+            want_reply = True
 
-        if reply_author.lower() != self.config.bot_name.lower() and not re.search(
-            self.config.bot_name, message.content, re.I
-        ):
+        msg_reply = None
+        if message.reference is not None:
+            ref = message.reference
+            if ref.cached_message is not None:
+                msg_reply = ref.cached_message
+            else:
+                msg_reply = await message.channel.fetch_message(ref.message_id)
+        if msg_reply is not None:
+            want_reply = msg_reply.author.display_name.lower() == self.config.bot_name.lower()
+
+        if want_reply == False:
             edb.add(history, embedding)
             log.info("Early return")
             return None
