@@ -82,9 +82,12 @@ class Bot(commands.Cog):
                 msg_reply = ref.cached_message
             else:
                 msg_reply = await message.channel.fetch_message(ref.message_id)
-        if msg_reply is not None:
-            want_reply = msg_reply.author.display_name.lower() == self.config.bot_name.lower()
 
+            if msg_reply is not None:
+                if msg_reply.author.display_name.lower() == self.config.bot_name.lower():
+                    want_reply = True
+
+        # if we don't want to reply, then just add the message to the history and return
         if want_reply == False:
             edb.add(history, embedding)
             log.info("Early return")
