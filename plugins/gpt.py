@@ -77,6 +77,7 @@ class Bot(commands.Cog):
             reply_author = message.reference.cached_message.author.display_name
             # TODO: use the referenced message to construct the embedding.
         except:
+            log.info("Message is not a reply")
             reply_author = ""
 
         if reply_author.lower() != self.config.bot_name.lower() and not re.search(
