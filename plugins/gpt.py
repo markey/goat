@@ -68,7 +68,6 @@ class Bot(commands.Cog):
 
         edb = self.get_edb(message.guild.id)
         history = self.get_history(channel)
-        embedding = await self.get_embedding(history)
 
         # reply to messages that are replies to goat, or messages that mention his name
         want_reply = False
@@ -89,11 +88,11 @@ class Bot(commands.Cog):
 
         # if we don't want to reply, then just add the message to the history and return
         if want_reply == False:
-            edb.add(history, embedding)
+            edb.add(history)
             log.info("Early return")
             return None
 
-        nearest = edb.get_nearest(embedding, limit=10)
+        nearest = edb.get_nearest(history, limit=10)
         selections = nearest["documents"][0]
 
         response = await self.get_response(
@@ -107,7 +106,7 @@ class Bot(commands.Cog):
         self.history.add(channel, self.config.bot_name, response)
         text = self.get_history(channel)
         log.info(f"Got history for embedding: {text}")
-        edb.add(text, embedding)
+        edb.add(text)
 
         await message.channel.send(response)
 
@@ -123,10 +122,6 @@ class Bot(commands.Cog):
                 prompt, temperature=self.config.high_temperature
             )
         return response
-
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def get_embedding(self, text):
-        return await embeddings.get_embedding(text)
 
     def get_history(self, channel):
         return self.history.get_formatted_history(channel, 2)
