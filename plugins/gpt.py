@@ -25,8 +25,8 @@ class Bot(commands.Cog):
     def get_prompt(self, channel, selections):
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
-        return "{}\n\n{}\nHere is the current conversation.\n{}<{}>:".format(
-            self.config.prompt, selections_prompt, history_prompt, self.config.bot_name
+        return "{}\nHere is the current conversation.\n{}<{}>:".format(
+            selections_prompt, history_prompt, self.config.bot_name
         )
 
     def get_edb(self, guild_id):
@@ -135,7 +135,9 @@ class Bot(commands.Cog):
         r = await openai.ChatCompletion.acreate(
             model=engine,
             messages=[
-                {"role": "system", "content": prompt}],
+                {"role": "system", "content": self.config.prompt},
+                {"role": "user", "content": prompt}
+            ],
             temperature=temperature,
             max_tokens=self.config.max_tokens,
             top_p=self.config.top_p,
