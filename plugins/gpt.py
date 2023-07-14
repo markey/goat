@@ -32,7 +32,7 @@ class Bot(commands.Cog):
     def get_edb(self, guild_id):
         if guild_id not in self.edbs:
             self.edbs[guild_id] = embeddings.EmbeddingDB(
-                f"goat_history_{guild_id}", host=self.config.qdrant_host
+                f"goat_history_{guild_id}"
             )
 
         return self.edbs[guild_id]
@@ -94,7 +94,7 @@ class Bot(commands.Cog):
             return None
 
         nearest = edb.get_nearest(embedding, limit=10)
-        selections = [i.payload["text"] for i in nearest]
+        selections = nearest["documents"][0]
 
         response = await self.get_response(
             channel, selections, last_response=self.last_response
