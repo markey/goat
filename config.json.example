@@ -5,9 +5,9 @@
     "engine": "gpt-3.5-turbo",
     "temperature": 0.9,
     "high_temperature": 0.99,
-    "max_tokens": 150,
+    "max_tokens": 100,
     "top_p": 1,
     "frequency_penalty": 0.025,
     "presence_penalty": 0.6,
-    "qdrant_host": "5011b95c-b05d-474e-863b-07189e741f3d.us-east-1-0.aws.cloud.qdrant.io"
+    "chromadb_directory": "C:\\Users\\FOOBAR\\Documents\\chromadb"
 }
