@@ -18,14 +18,14 @@ class Bot(commands.Cog):
         self.edbs = {}
 
     def get_selections_prompt(self, selections):
-        return "These are snippets of previous conversations that appear to be related to the current conversation.\n\n{}\n\n".format(
+        return "These are snippets of previous conversations that appear to be related to the current conversation:\n\n{}\n\n".format(
             "".join([f"{i}:\n{s}\n" for i, s in enumerate(selections)])
         )
 
     def get_prompt(self, channel, selections):
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
-        return "{}\nHere is the current conversation.\n{}<{}>:".format(
+        return "{}\nHere is the current conversation:\n\n{}<{}>:".format(
             selections_prompt, history_prompt, self.config.bot_name
         )
 
