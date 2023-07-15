@@ -19,7 +19,7 @@ class Bot(commands.Cog):
 
     def get_selections_prompt(self, selections):
         return "These are snippets of previous conversations that appear to be related to the current conversation.\n\n{}\n\n".format(
-            "".join([f"{i}: {s}\n" for i, s in enumerate(selections)])
+            "".join([f"{i}:\n{s}\n" for i, s in enumerate(selections)])
         )
 
     def get_prompt(self, channel, selections):
@@ -72,6 +72,7 @@ class Bot(commands.Cog):
         # reply to messages that are replies to goat, or messages that mention his name
         want_reply = False
         if re.search(self.config.bot_name, message.content, re.I):
+            log.info("Replying to: {}".format(message.content))
             want_reply = True
 
         msg_reply = None
