@@ -4,8 +4,6 @@ simply the world's greatest discord bot.
 
 ## future plans
 
-- make goat understand replies to its own messages.
-- upgrade to Discord.py 2.x
 
 ## setup
 
