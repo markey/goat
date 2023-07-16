@@ -1,15 +1,25 @@
 # goat
+
 simply the world's greatest discord bot.
 
 ## future plans
-- add semantle group play support.
-- add data persistence layer to save state across restarts.
-- make goat understand @mentions of other users.
-- convert goat functionality to Cogs so they can be dynamically reloaded without restarting the bot.
+
+- make goat understand replies to its own messages.
+- upgrade to Discord.py 2.x
 
 ## setup
 
-pip install -r requirements.txt
+poetry is used for dependency management. you can install it with pipx:
+
+pipx install poetry
+
+then, install the dependencies:
+
+poetry install
+
+then to run:
+
+poetry run main.py
 
 you will need to register an application on discord:
 https://discordpy.readthedocs.io/en/stable/discord.html
