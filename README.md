@@ -1,9 +1,8 @@
+![goat](goat.png)
+
 # goat
 
 simply the world's greatest discord bot.
-
-## future plans
-
 
 ## setup
 
