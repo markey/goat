@@ -8,7 +8,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from plugins.lib import embeddings
 
 
-class Bot(commands.Cog):
+class GptBot(commands.Cog):
     def __init__(self, bot, config, history):
         self.bot = bot
         self.config = config

@@ -8,6 +8,7 @@ from discord.ext import commands
 import util.config
 import util.history
 from plugins import gpt
+from plugins import sd
 
 config = util.config.Config()
 history = util.history.MessageHistory(config.history_length)
@@ -21,8 +22,8 @@ async def on_ready():
     print("Ready!")
 
 async def setup():
-    for cog in [gpt]:
-        await bot.add_cog(cog.Bot(bot, config, history))
+    for cog in [gpt.GptBot, sd.SdBot]:
+        await bot.add_cog(cog(bot, config, history))
         log.info(f"Loaded cog {cog.__name__}")
 
 asyncio.run(setup())

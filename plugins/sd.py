@@ -4,12 +4,12 @@ import replicate
 import re
 
 
-class Bot(commands.Cog):
+class SdBot(commands.Cog):
     def __init__(self, bot, config, history):
         self.bot = bot
         self.config = config
         self.history = history
-        self.model = replicate.models.get("cjwbw/stable-diffusion-v2")
+        self.model = replicate.models.get("stability-ai/sdxl")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -35,7 +35,7 @@ class Bot(commands.Cog):
         while prediction.status not in ["succeeded", "failed", "canceled"]:
             prediction.reload()
             print("Waiting for {}".format(prompt))
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
 
         if prediction.status == "succeeded":
             response = "{}\n{}".format(prompt, prediction.output[0])
