@@ -2,7 +2,7 @@
 
 # Goat
 
-Simply the world's greatest discord bot.
+Simply the world's greatest Discord bot!
 
 ## Setup
 
