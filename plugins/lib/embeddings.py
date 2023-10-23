@@ -25,6 +25,7 @@ class EmbeddingDB:
         # generate a random uuid
         id = str(uuid.uuid4())
 
+        log.info(f"ChromaDB Upserting id:\n{id} with text:\n{text}")
         self.collection.upsert(
             ids=[id], documents=[text]
         )
@@ -34,5 +35,5 @@ class EmbeddingDB:
             n_results=limit,
             query_texts=[text]
         )
-        log.info(f"Got search result: {search_result}")
+        log.info(f"Got search result:\n{search_result}")
         return search_result

@@ -100,13 +100,13 @@ class GptBot(commands.Cog):
             channel, selections, last_response=self.last_response
         )
         response = response.lstrip()
-        log.info(f"Got response: {response}")
+        log.info(f"Got response:\n{response}")
         self.last_response = response
 
         # save goat's response with the previous embedding for the question
         self.history.add(channel, self.config.bot_name, response)
         text = self.get_history(channel)
-        log.info(f"Got history for embedding: {text}")
+        log.info(f"Got history for embedding:\n{text}")
         edb.add(text)
 
         await message.channel.send(response)
@@ -116,7 +116,7 @@ class GptBot(commands.Cog):
         # TODO: verify prompt length is limited to the correct
         # number of tokens.
         prompt = self.get_prompt(channel, selections)
-        log.info(prompt)
+        log.info(f"Prompt:\n{prompt}")
         response = await self.get_completion(prompt)
         if response == last_response:
             response = await self.get_completion(
