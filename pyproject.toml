@@ -22,3 +22,6 @@ uuid = "^1.30"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = "main:main"
