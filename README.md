@@ -16,7 +16,7 @@ Then, install the dependencies:
 
 Then to run:
 
-    poetry run main.py
+    poetry run python main.py
 
 You will need to register an application on Discord:
 https://discordpy.readthedocs.io/en/stable/discord.html

@@ -28,4 +28,4 @@ async def setup():
 
 asyncio.run(setup())
 
-bot.run(os.environ["DISCORD_TOKEN"])
+bot.run(config.discord_token)
