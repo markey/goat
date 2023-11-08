@@ -93,7 +93,7 @@ class GptBot(commands.Cog):
             log.info("Early return")
             return None
 
-        nearest = edb.get_nearest(history, limit=5)
+        nearest = edb.get_nearest(history, limit=7)
         selections = nearest["documents"][0]
 
         response = await self.get_response(
