@@ -25,7 +25,7 @@ class Bot(commands.Cog):
             return None
 
         # respond when triggered
-        if not re.search("^goat,? look( at)?", content, re.I):
+        if not re.search(f"^{self.config.bot_name},? look( at)?", content, re.I):
             return None
 
         # extract any listed urls from the message

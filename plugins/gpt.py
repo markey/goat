@@ -60,7 +60,7 @@ class GptBot(commands.Cog):
 
         # filter out other commands
         # TODO: fix this with better command dispatching.
-        if re.search("^goat,? (draw|look)", message.content, re.I):
+        if re.search(f"^{self.config.bot_name},? (draw|look)", message.content, re.I):
             return None
 
         # add message to history--this is required to happen first so embedding lookups work.

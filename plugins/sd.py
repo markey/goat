@@ -21,7 +21,7 @@ class SdBot(commands.Cog):
             return None
 
         # respond when triggered
-        r = re.match("^goat,? draw:? (me |a picture of )?(.+)", content, re.I)
+        r = re.match(f"^{self.config.bot_name},? draw:? (me |a picture of )?(.+)", content, re.I)
         if not r:
             return None
 
