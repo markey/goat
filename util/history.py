@@ -31,10 +31,7 @@ class MessageHistory:
     def get_formatted_history(self, channel, length=None):
         if length is None:
             length = self.history_length
-        messages = [format_message(m) for m in self.history[channel][-length:]]
-        if messages:
-            last_message = messages.pop()
-            return "\n".join(messages) + "\n\n" + last_message + "\n"
-        else:
-            return "\n"
-        
+        return (
+            "\n".join([format_message(m) for m in self.history[channel][-length:]])
+            + "\n"
+        )
