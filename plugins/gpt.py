@@ -25,7 +25,7 @@ class GptBot(commands.Cog):
     def get_prompt(self, channel, selections):
         history_prompt = self.history.get_formatted_history(channel)
         selections_prompt = self.get_selections_prompt(selections)
-        return "{}\nHere is the current conversation:\n\n{}<{}>:".format(
+        return "{}\nHere is the current conversation (you should reply to the newest message at the bottom):\n\n{}<{}>:".format(
             selections_prompt, history_prompt, self.config.bot_name
         )
 
